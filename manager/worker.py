@@ -23,12 +23,22 @@ Functions for Worker List and Details
 @admin.route('/ec2_list',methods=['GET', 'POST'])
 # Display an HTML list of all ec2 instances
 def ec2_list():
-    instances = ec2.instances.all()
+    target_instances = get_all_targets()
     num_worker_stats = ec2_chart()
-    return render_template('main.html', instances=instances, num_worker_stats=num_worker_stats)
+    return render_template('main.html', target_instances=target_instances, num_worker_stats=num_worker_stats)
 
-# Display a chart of the num of workers in the last 30min.
+def get_all_targets():
+    # Get all the register targets(the workers that are registered with the elb correctly)
+    target_group = elb.describe_target_health(TargetGroupArn=config.ARN)
+    instances = []
+    if target_group['TargetHealthDescriptions']:
+        for target in target_group['TargetHealthDescriptions']:
+            if target['TargetHealth']['State'] != 'draining':
+                instances.append(target['Target'])
+    return instances
+
 def ec2_chart():
+    # Display a chart of the num of workers in the last 30min.
     metric_name = 'HealthyHostCount'
     namespace = 'AWS/ApplicationELB'
     statistic = 'Average'
@@ -53,35 +63,21 @@ def ec2_chart():
     return num_worker_stats
 
 
+
+
 @admin.route('/ec2_details/<id>',methods=['GET'])
 #Display CPU&HTTP request charts about a specific instance.
 def ec2_details(id):
     # To get instance details
     instance = ec2.Instance(id)
     #Chart1: Total cpu utilization of the worker for the past 30mins, resolution = 1min
-    metric_name = 'CPUUtilization'
-    namespace = 'AWS/EC2'
-    statistic = 'Average'                   # could be Sum,Maximum,Minimum,SampleCount,Average
+    cpu_stats = get_cpu_stats(id)
+    print(cpu_stats)
+    #Chart2: The rate of the http request received by the worker in the past 30mins, resolution = 1min
 
-    cpu = CLOUDWATCH.get_metric_statistics(
-        Period=1 * 60, #resolution 60s
-        StartTime=datetime.utcnow() - timedelta(seconds=30 * 60),
-        EndTime=datetime.utcnow() - timedelta(seconds=0 * 60),
-        MetricName=metric_name,
-        Namespace=namespace,  # Unit='Percent',
-        Statistics=[statistic],
-        Dimensions=[{'Name': 'InstanceId', 'Value': id}]
-    )
-    cpu_stats = []
-    for point in cpu['Datapoints']:
-        hour = point['Timestamp'].hour
-        minute = point['Timestamp'].minute
-        time = hour + minute/60
-        cpu_stats.append([time,point['Average']])
+    return render_template('ec2_details.html', instance=instance, cpu_stats=cpu_stats)
 
-    cpu_stats = sorted(cpu_stats, key=itemgetter(0))
-
-    '''Chart2: The rate of the http request received by the worker in the past 30mins, resolution = 1min
+def get_cpu_stats(instance_id):
     metric_name = 'CPUUtilization'
     namespace = 'AWS/EC2'
     statistic = 'Average'  # could be Sum,Maximum,Minimum,SampleCount,Average
@@ -93,7 +89,7 @@ def ec2_details(id):
         MetricName=metric_name,
         Namespace=namespace,  # Unit='Percent',
         Statistics=[statistic],
-        Dimensions=[{'Name': 'InstanceId', 'Value': id}]
+        Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}]
     )
     cpu_stats = []
     for point in cpu['Datapoints']:
@@ -101,10 +97,11 @@ def ec2_details(id):
         minute = point['Timestamp'].minute
         time = hour + minute / 60
         cpu_stats.append([time, point['Average']])
-
     cpu_stats = sorted(cpu_stats, key=itemgetter(0))
-    '''
-    return render_template('ec2_details.html', instance=instance, cpu_stats=cpu_stats)
+    return cpu_stats
+
+
+
 
 @admin.route('/add_worker',methods=['POST'])
 # Add new worker
@@ -135,6 +132,7 @@ def ec2_create():
                                         KeyName=config.key_name,
                                         MinCount=1,
                                         MaxCount=1,
+                                        UserData=config.user_data,
                                         InstanceType='t2.small',
                                         Monitoring={'Enabled': True},
                                         SecurityGroupIds=config.SecurityGroup_id,  #copy security group
@@ -144,14 +142,17 @@ def ec2_create():
     return new_instance['Instances'][0]['InstanceId']
 
 def get_stopped_instances():
-    ec2_filter = [{'Name': 'instance-state-name', 'Values': ['stopped']}]
+    ec2_filter = [{'Name': 'instance-state-name', 'Values': ['stopped','stopping']}]
     return EC2.describe_instances(Filters=ec2_filter)
 
 def register_instance(new_instance_id):
     # Register the newly created ec2 to the elb
     target = [{'Id': new_instance_id,
-               'Port': 22}, ]
+               'Port': 5000}, ]
     elb.register_targets(TargetGroupArn=config.ARN, Targets=target)
+
+
+
 
 @admin.route('/remove_worker/<id>',methods=['POST'])
 # Terminate a EC2 instance
