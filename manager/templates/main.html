@@ -1,61 +1,60 @@
 {% extends "base.html" %}
 {% block content %}
-			<div class="media-body">
-				<div class="article-metadata">
-					<h2>Welcome, Manager!</h2>
-				</div>
-					<p>You can manage workers and all the data here!</p>
-			</div>
+	<div class="media-body">
+		<div class="article-metadata">
+			<h2>Welcome, Manager!</h2>
+		</div>
+			<p>You can manage workers and all the data here!</p>
+	</div>
 
-			<div class="form-group">
-				<form action="{{url_for('add_worker')}}" method="post">
-					<input type="submit" value="Add Worker">
-				</form>
-			</div>
+	<form class="btn" action="{{url_for('add_worker')}}" method="post">
+		<input type="submit" value="Add Worker">
+	</form>
+	<form class="btn" action="{{url_for('auto_scaling')}}" method="post">
+		<input type="submit" value="Set Auto-Scaling Policy">
+	</form>
 
-		<table>
+
+	<table>
+		{% if target_instances == [] %}
+		{% else %}
 			<thead>
 				<th><center>ID</center></th>
-				<th><center>Type</center></th>
-				<th><center>Availability Zone</center></th>
-				<th><center>Status</center></th>
+				<th><center>Port</center></th>
 			</thead>
-			{% for instance in instances %}
-				{% if instance.state['Name'] == 'terminated' or instance.state['Name'] == 'shutting-down' %}
-				{% else %}
-					<tr>
-						<td><center>{{ instance.id }}</center></td>
-						<td><center>{{ instance.instance_type }}</center></td>
-						<td><center>{{ instance.placement['AvailabilityZone']}}</center></td>
-						<td><center>{{ instance.state['Name'] }}</center></td>
-					</tr>
-					<td><center>
-						<form action="{{url_for('ec2_details',id=instance.id)}}" method='get'>
-							<input type='submit' value='Details' />
-						</form>
-					</center></td>
-					<td><center>
-						<form action="{{url_for('remove_worker',id=instance.id)}}" method='post', onsubmit='return confirm("Are you sure?")'>
-							<input type='submit' value='Remove Worker' />
-						</form>
-					</center></td>
-				{% endif %}
-			{% endfor %}
-		</table>
+		{% endif %}
 
-			<div class="article-content">
-				<h5>Worker Numbers</h5>
-				<div id="worker_plot" style="width:400px;height:200px"></div>
-				<script>
+		{% for instance in target_instances %}
+			<tr>
+				<td><center>{{ instance['Id'] }}</center></td>
+				<td><center>{{ instance['Port'] }}</center></td>
+			</tr>
+				<td><center>
+					<form action="{{url_for('ec2_details',id=instance['Id'])}}" method='get'>
+						<input type='submit' value='Details' />
+					</form>
+				</center></td>
+				<td><center>
+					<form action="{{url_for('remove_worker',id=instance['Id'])}}" method='post', onsubmit='return confirm("Are you sure?")'>
+						<input type='submit' value='Remove Worker' />
+					</form>
+				</center></td>
+		{% endfor %}
+	</table>
 
-					var options = {
-						series: {
-							lines: { show: true },
-							points: { show: true }
-						}
-					};
+	<div class="article-content">
+		<h5>Worker Numbers</h5>
+		<div id="worker_plot" style="width:400px;height:200px"></div>
+			<script>
 
-					$.plot($("#worker_plot"), [ {{ num_worker_stats }} ] , options);
-				</script>
-			</div>
+				var options = {
+					series: {
+						lines: { show: true },
+						points: { show: true }
+					}
+				};
+
+				$.plot($("#worker_plot"), [ {{ num_worker_stats }} ] , options);
+			</script>
+	</div>
 {% endblock content %}
