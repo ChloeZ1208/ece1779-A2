@@ -1,31 +1,53 @@
-from flask import render_template, redirect, url_for, request, g
+from flask import render_template
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Length, EqualTo, ValidationError
+from wtforms import SubmitField, IntegerField, FloatField
+from wtforms.validators import DataRequired
 import boto3
 import mysql.connector
-from manager import admin, config
-#from celery.task import periodic_task
+from manager import admin, check_cpu
 
 class AutoScalingForm(FlaskForm):
-	grow_threshold = StringField('CPU Threshold for Growing the Worker Pool',
+	grow_threshold = IntegerField('CPU Threshold for Growing the Worker Pool',
 							validators=[DataRequired(message= u'Threshold can not be empty.')])
-	shrink_threshold = StringField('CPU Threshold for shrinking the Worker Pool',
+	shrink_threshold = IntegerField('CPU Threshold for shrinking the Worker Pool',
 							validators=[DataRequired(message= u'Threshold can not be empty.')])
-	expand_ratio = StringField('Expanding Ratio',
+	expand_ratio = FloatField('Expanding Ratio',
 							validators=[DataRequired(message= u'Ratio can not be empty.')])
-	shrink_ratio = StringField('Shrinking Ratio',
+	shrink_ratio = FloatField('Shrinking Ratio',
 							validators=[DataRequired(message= u'Ratio can not be empty.')])
 	submit = SubmitField('Submit')
 
 '''
 Functions for database
+
+def connect_to_database():
+	return mysql.connector.connect(user=db_config['user'],
+					password=db_config['password'],
+					host=db_config['host'],
+					database=db_config['database'])
+
+def get_db():
+	db = getattr(g, '_database', None)
+	if db is None:
+		db = g._database = connect_to_database()
+	return db
+
+@admin.teardown_appcontext
+# this will execute every time when the context is closed
+def teardown_db(exception):
+	db = getattr(g, '_database', None)
+	if db is not None:
+		db.close()
 '''
 
-@admin.route('/auto_scaling', methods=['GET', 'POST'])
+
+'''
+Functions for auto-scaling
+'''
+@admin.route('/auto_scaling', methods=['GET','POST'])
 def auto_scaling():
 	form = AutoScalingForm()
-	if form.is_submitted():
+	if form.validate_on_submit():
 		grow_threshold = form.grow_threshold.data
 		shrink_threshold = form.shrink_threshold.data
 		expand_ratio = form.expand_ratio.data
@@ -42,7 +64,18 @@ def auto_scaling():
         '''
         cursor.execute(query, (growth_threshold,shrink_threshold,expand_ratio,shrink_ratio))
         cnx.commit()
+		compare_cpu()
 		"""
-
 	return render_template('auto_scaling.html', form=form)
+
+
+"""
+def get_policy():
+    cnx = get_db()
+    cursor = cnx.cursor()
+    query = '''SELECT * FROM policy'''
+    cursor.execute(query)
+    row = cursor.fetchone()
+    return row
+"""
 
