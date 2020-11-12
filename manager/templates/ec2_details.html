@@ -11,12 +11,15 @@
         <tr><td>State</td><td>{{ instance.state['Name'] }}</td></tr>
     </table>
     <!-- Display performance charts-->
-    <table style="margin-left:auto; margin-right:auto;">
+    <table>
         <tr>
             <td><center><h3>CPU Utilization</h3></center></td>
+            <td><center><h3>HTTP Requests</h3></center></td>
         </tr>
         <tr>
             <td><div id="cpu_plot" style="width:450px;height:300px"></div></td>
+            <!--<td><div id="http_plot" style="width:450px;height:300px"></div></td>
+            $.plot($("#http_plot"), [ {{ http_requests }} ] , options);-->
         </tr>
     </table>
 
@@ -27,6 +30,7 @@
                 points: { show: true }
             }
         };
+
 
         $.plot($("#cpu_plot"), [ {{ cpu_stats }} ] , options);
     </script>
