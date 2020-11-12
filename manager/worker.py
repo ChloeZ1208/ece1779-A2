@@ -11,13 +11,34 @@ ec2 = boto3.resource('ec2')
 EC2 = boto3.client('ec2')
 elb = boto3.client('elbv2')
 CLOUDWATCH = boto3.client('cloudwatch')
+
 '''
-Functions for Database (for project terminates)
+Functions for Database (for delete all data)
+
+def connect_to_database():
+	return mysql.connector.connect(user=db_config['user'],
+									password=db_config['password'],
+									host=db_config['host'],
+									database=db_config['database'])
+
+def get_db():
+	db = getattr(g, '_database', None)
+	if db is None:
+		db = g._database = connect_to_database()
+	return db
+
+@admin.teardown_appcontext
+# this will execute every time when the context is closed
+def teardown_db(exception):
+	db = getattr(g, '_database', None)
+	if db is not None:
+		db.close()
 '''
 
 
+
 '''
-Functions for Worker List and Details
+Functions for Worker List and Chart
 '''
 @admin.route('/',methods=['GET'])
 @admin.route('/ec2_list',methods=['GET', 'POST'])
@@ -28,13 +49,13 @@ def ec2_list():
     return render_template('main.html', target_instances=target_instances, num_worker_stats=num_worker_stats)
 
 def get_all_targets():
-    # Get all the register targets(the workers that are registered with the elb correctly)
-    target_group = elb.describe_target_health(TargetGroupArn=config.ARN)
+    # Get all the register targets(the workers that are registered with the elb[include initial, healthy, unused])
+    target_group = elb.describe_target_health(TargetGroupArn=config.targetgroupARN)
     instances = []
     if target_group['TargetHealthDescriptions']:
         for target in target_group['TargetHealthDescriptions']:
             if target['TargetHealth']['State'] != 'draining':
-                instances.append(target['Target'])
+                instances.append(target)
     return instances
 
 def ec2_chart():
@@ -50,7 +71,8 @@ def ec2_chart():
         MetricName=metric_name,
         Namespace=namespace,  # Unit='Percent',
         Statistics=[statistic],
-        Dimensions=[{'Name': 'TargetGroupARN', 'Value': config.ARN}]
+        Dimensions=[{'Name': 'TargetGroup', 'Value': config.targetgroup},
+                    {'Name': 'LoadBalancer', 'Value': config.loadbalancer}]
     )
     num_worker_stats = []
     for point in num_worker['Datapoints']:
@@ -62,9 +84,9 @@ def ec2_chart():
     num_worker_stats = sorted(num_worker_stats, key=itemgetter(0))
     return num_worker_stats
 
-
-
-
+'''
+Functions for Each Worker's Details
+'''
 @admin.route('/ec2_details/<id>',methods=['GET'])
 #Display CPU&HTTP request charts about a specific instance.
 def ec2_details(id):
@@ -72,10 +94,9 @@ def ec2_details(id):
     instance = ec2.Instance(id)
     #Chart1: Total cpu utilization of the worker for the past 30mins, resolution = 1min
     cpu_stats = get_cpu_stats(id)
-    print(cpu_stats)
     #Chart2: The rate of the http request received by the worker in the past 30mins, resolution = 1min
-
-    return render_template('ec2_details.html', instance=instance, cpu_stats=cpu_stats)
+    #http_requests = get_http_requests(id)
+    return render_template('ec2_details.html', instance=instance, cpu_stats=cpu_stats) #http_requests=http_requests
 
 def get_cpu_stats(instance_id):
     metric_name = 'CPUUtilization'
@@ -87,7 +108,7 @@ def get_cpu_stats(instance_id):
         StartTime=datetime.utcnow() - timedelta(seconds=30 * 60),
         EndTime=datetime.utcnow() - timedelta(seconds=0 * 60),
         MetricName=metric_name,
-        Namespace=namespace,  # Unit='Percent',
+        Namespace=namespace,
         Statistics=[statistic],
         Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}]
     )
@@ -99,10 +120,33 @@ def get_cpu_stats(instance_id):
         cpu_stats.append([time, point['Average']])
     cpu_stats = sorted(cpu_stats, key=itemgetter(0))
     return cpu_stats
+'''
+def get_http_requests(instance_id):
+    metric_name = 'HTTP_requests'
+    namespace = 'HTTP_requests'
+    statistic = 'Maximum'  # could be Sum,Maximum,Minimum,SampleCount,Average
 
-
-
-
+    http = CLOUDWATCH.get_metric_statistics(
+        Period=1 * 60,  # resolution 60s
+        StartTime=datetime.utcnow() - timedelta(seconds=30 * 60),
+        EndTime=datetime.utcnow() - timedelta(seconds=0 * 60),
+        MetricName=metric_name,
+        Namespace=namespace,  # Unit='Percent',
+        Statistics=[statistic],
+        Dimensions=[{'Name': 'InstanceId', 'Value': instance_id}]
+    )
+    http_requests = []
+    for point in http['Datapoints']:
+        hour = point['Timestamp'].hour
+        minute = point['Timestamp'].minute
+        time = hour + minute / 60
+        http_requests.append([time, point['Maximum']])
+    http_requests = sorted(http_requests, key=itemgetter(0))
+    return http_requests
+'''
+'''
+Functions for Adding New Worker to Worker Pool
+'''
 @admin.route('/add_worker',methods=['POST'])
 # Add new worker
 def add_worker():
@@ -119,7 +163,7 @@ def add_worker():
         while len(status['InstanceStatuses']) < 1:
             time.sleep(1)
             status = EC2.describe_instance_status(InstanceIds=[new_instance_id])
-        # It needs time to transfer from 'pending' to 'running'
+        # It needs time to transfer the state from 'pending' to 'running'
         while status['InstanceStatuses'][0]['InstanceState']['Name'] != 'running':
             time.sleep(1)
             status = EC2.describe_instance_status(InstanceIds=[new_instance_id])
@@ -149,20 +193,17 @@ def register_instance(new_instance_id):
     # Register the newly created ec2 to the elb
     target = [{'Id': new_instance_id,
                'Port': 5000}, ]
-    elb.register_targets(TargetGroupArn=config.ARN, Targets=target)
+    elb.register_targets(TargetGroupArn=config.targetgroupARN, Targets=target)
 
-
-
-
+'''
+Functions for Deleting Worker from Worker Pool
+'''
 @admin.route('/remove_worker/<id>',methods=['POST'])
 # Terminate a EC2 instance
 def remove_worker(id):
-    # create connection to ec2
-    ec2 = boto3.resource('ec2')
-    elb = boto3.client('elbv2')
     target = [{'Id': id,
-               'Port': 80}]
-    elb.deregister_targets(TargetGroupArn=config.ARN, Targets=target)
+               'Port': 5000}]
+    elb.deregister_targets(TargetGroupArn=config.targetgroupARN, Targets=target)
     ec2.instances.filter(InstanceIds=[id]).terminate()
     return redirect(url_for('ec2_list'))
 
