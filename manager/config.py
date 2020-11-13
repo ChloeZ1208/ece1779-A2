@@ -9,6 +9,8 @@ key_name = 'a2worker0'
 
 # define userdata to run user-app at instance launch
 user_data = "#!/bin/bash\n screen\n /home/ubuntu/Desktop/ece1779a1/start.sh"
+'''Try this if it does not work:  
+Content-Type: multipart/mixed; boundary="//" MIME-Version: 1.0 --// Content-Type: text/cloud-config; charset="us-ascii" MIME-Version: 1.0 Content-Transfer-Encoding: 7bit Content-Disposition: attachment; filename="cloud-config.txt" #cloud-config cloud_final_modules: - [scripts-user, always] --// Content-Type: text/x-shellscript; charset="us-ascii" MIME-Version: 1.0 Content-Transfer-Encoding: 7bit Content-Disposition: attachment; filename="userdata.txt" #!/bin/bash screen /home/ubuntu/Desktop/ece1779a1/start.sh --//'''
 
 #elb target group ARN
 targetgroup = 'targetgroup/ece1779a2user/da2f671e55d83fc0'
