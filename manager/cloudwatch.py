@@ -61,4 +61,5 @@ cloudwatch.put_metric_data(
 	],
 	Namespace = 'HTTP_requests'
 )
+An error occurred (AccessDenied) when calling the PutMetricData operation: User: arn:aws:sts::327200236258:assumed-role/ece1779a2/i-045d51d784601f821 is not authorized to perform: cloudwatch:PutMetricData
 
