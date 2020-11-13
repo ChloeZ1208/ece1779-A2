@@ -54,16 +54,16 @@ def auto_scaling():
 		shrink_ratio = form.shrink_ratio.data
 		"""
 		cnx = get_db()
-        cursor = cnx.cursor()
-        query = '''UPDATE policy
-                   SET grow_th = %s,
-                       shrink_th = %s,
-                       expand_ratio = %s,
-                       shrink_ratio = %s
-                   WHERE id = 1
-        '''
-        cursor.execute(query, (growth_threshold,shrink_threshold,expand_ratio,shrink_ratio))
-        cnx.commit()
+        	cursor = cnx.cursor()
+        	query = '''UPDATE policy
+                   	SET grow_th = %s,
+                       	    shrink_th = %s,
+                            expand_ratio = %s,
+                            shrink_ratio = %s
+                            WHERE id = 1
+        	'''
+        	cursor.execute(query, (growth_threshold,shrink_threshold,expand_ratio,shrink_ratio))
+        	cnx.commit()
 		compare_cpu()
 		"""
 	return render_template('auto_scaling.html', form=form)
