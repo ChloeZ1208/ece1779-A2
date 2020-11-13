@@ -15,7 +15,7 @@ To do list:
 1. The http requests received by each worker in 30 mins : cloudwatch custom metrics, publish metrics
 2. Terminate all workers
 
-HINT!!!!
+!!!!
 It takes about 7min from launching an instance to registering it successfully to the target group(healthy). So the if condition in get_all_targets is '!= draining' in case the auto-scaling falls in unreliable algorithm(ref: ece1779a2.pdf-requirements-8). :|
 
 https://utoronto.zoom.us/rec/share/bJGqDzkIQgVKwZzsSyhJQNRt8Cb6UEXmHmCoJnBbEO1ZK5IHHi-0_NEMWnbxch3X._NlUAUHnIuNKfJM6?startTime=1602094724000
