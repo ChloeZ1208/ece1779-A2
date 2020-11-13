@@ -17,9 +17,9 @@ Functions for Database (for delete all data)
 
 def connect_to_database():
 	return mysql.connector.connect(user=db_config['user'],
-									password=db_config['password'],
-									host=db_config['host'],
-									database=db_config['database'])
+					password=db_config['password'],
+					host=db_config['host'],
+					database=db_config['database'])
 
 def get_db():
 	db = getattr(g, '_database', None)
@@ -95,8 +95,8 @@ def ec2_details(id):
     #Chart1: Total cpu utilization of the worker for the past 30mins, resolution = 1min
     cpu_stats = get_cpu_stats(id)
     #Chart2: The rate of the http request received by the worker in the past 30mins, resolution = 1min
-    #http_requests = get_http_requests(id)
-    return render_template('ec2_details.html', instance=instance, cpu_stats=cpu_stats) #http_requests=http_requests
+    http_requests = get_http_requests(id)
+    return render_template('ec2_details.html', instance=instance, cpu_stats=cpu_stats, http_requests=http_requests)
 
 def get_cpu_stats(instance_id):
     metric_name = 'CPUUtilization'
@@ -120,7 +120,7 @@ def get_cpu_stats(instance_id):
         cpu_stats.append([time, point['Average']])
     cpu_stats = sorted(cpu_stats, key=itemgetter(0))
     return cpu_stats
-'''
+
 def get_http_requests(instance_id):
     metric_name = 'HTTP_requests'
     namespace = 'HTTP_requests'
@@ -143,7 +143,7 @@ def get_http_requests(instance_id):
         http_requests.append([time, point['Maximum']])
     http_requests = sorted(http_requests, key=itemgetter(0))
     return http_requests
-'''
+
 '''
 Functions for Adding New Worker to Worker Pool
 '''
@@ -177,7 +177,7 @@ def ec2_create():
                                         MinCount=1,
                                         MaxCount=1,
                                         UserData=config.user_data,
-                                        InstanceType='t2.small',
+                                        InstanceType='t2.medium',
                                         Monitoring={'Enabled': True},
                                         SecurityGroupIds=config.SecurityGroup_id,  #copy security group
                                         IamInstanceProfile=config.Iam_profile      #copy IAM role
@@ -206,6 +206,19 @@ def remove_worker(id):
     elb.deregister_targets(TargetGroupArn=config.targetgroupARN, Targets=target)
     ec2.instances.filter(InstanceIds=[id]).terminate()
     return redirect(url_for('ec2_list'))
+'''
+Functions for stopping manager and terminating all the workers
+
+@admin.route('/stop_manager', methods=['POST'])
+def stop_manager():
+    #terminate workers
+    instances = get_all_targets()
+    for instance in instances:
+        id = instance['Target']['Id']
+        remove_worker(id)        
+    #stop the manager
+    ec2.instances.filter(InstanceIds=[config.manager_id].stop()   
+'''
 
 
 
