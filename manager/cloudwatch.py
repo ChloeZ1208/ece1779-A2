@@ -15,7 +15,19 @@ def connect_to_database():
 									ssl_ca=db_config['ssl_ca'],
 									host=db_config['host'],
 									database=db_config['database'])
-
+def create_graph(instance_id):
+	time = datetime.now()
+	for i in range 30:
+		cnx = connect_to_database()
+		cursor = cnx.cursor()
+		time = time - timedelta(minutes = 1)
+		record_time = time.strftime("%d%m%Y%H%M")
+		query = ''' SELECT * from http_request where instance_id = %s and record_time = %s'''
+		cursor.execute(query,(instance_id,record_time))
+		result = cursor.fetchall()
+		value = len(result)
+		value = str(value)
+		#pair will be time,value
 
 cred= requests.get('http://169.254.169.254/latest/meta-data/iam/security-credentials/ece1779a2').json()
 
@@ -61,5 +73,5 @@ cloudwatch.put_metric_data(
 	],
 	Namespace = 'HTTP_requests'
 )
-An error occurred (AccessDenied) when calling the PutMetricData operation: User: arn:aws:sts::327200236258:assumed-role/ece1779a2/i-045d51d784601f821 is not authorized to perform: cloudwatch:PutMetricData
+#An error occurred (AccessDenied) when calling the PutMetricData operation: User: arn:aws:sts::327200236258:assumed-role/ece1779a2/i-045d51d784601f821 is not authorized to perform: cloudwatch:PutMetricData
 
