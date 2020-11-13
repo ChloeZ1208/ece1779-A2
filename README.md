@@ -16,9 +16,9 @@ To do list:
 2. Terminate all workers
 
 HTTP requests received by each worker:
-Having problem in cloudwatch custome metrics.
-Create a table in the database to record the http requests
-Can create graph without cloudwatch custome metrics
+1. Having problem in cloudwatch custome metrics.
+2. Create a table in the database to record the http requests
+3. Can create graph without cloudwatch custome metrics
 
 !!!!
 It takes about 7min from launching an instance to registering it successfully to the target group(healthy). So the if condition in get_all_targets is '!= draining' in case the auto-scaling falls in unreliable algorithm(ref: ece1779a2.pdf-requirements-8). :|
