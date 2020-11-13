@@ -6,23 +6,32 @@
 		</div>
 			<p>You can manage workers and all the data here!</p>
 	</div>
-
 		<table>
 			<td>
 				<form class="btn" action="{{url_for('add_worker')}}" method="post">
 					<input type="submit" value="Add Worker">
 				</form>
 			</td>
-			<td>      </td>
 			<td>
-				<form  class="btn" action="{{url_for('auto_scaling')}}" method="post">
+				<form class="btn" action="{{url_for('auto_scaling')}}" method="post">
 					<input type="submit" value="Set Auto-Scaling Policy">
+				</form>
+			</td>
+			<td>
+				<form class="btn" action="#" method="post" onsubmit='return confirm("Are you sure?")'>
+					<input type="submit" value="Delete All Data">
+				</form>
+			</td>
+			<td>
+				<form class="btn" action="#" method="post" onsubmit='return confirm("Are you sure?")'>
+					<input type="submit" value="Stop the Manager">
 				</form>
 			</td>
 
 		</table>
+
 		<table>
-				<a style="padding left 10px" href="ece1779a2-1322249347.us-east-1.elb.amazonaws.com">LoadBalancer DNS Name:ece1779a2-1322249347.us-east-1.elb.amazonaws.com </a>
+				<a style="padding left 10px" href="http://ece1779a2-1322249347.us-east-1.elb.amazonaws.com:5000">Load balanced user-app entry URL</a>
 		</table>
 
 
@@ -54,7 +63,7 @@
 
 	<div class="article-content">
 		<h5>Worker Numbers</h5>
-		<div id="worker_plot" style="width:400px;height:200px"></div>
+		<div id="worker_plot" style="width:450px;height:250px"></div>
 			<script>
 
 				var options = {
