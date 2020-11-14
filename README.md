@@ -5,15 +5,16 @@ Achieved Requirements:
 2. Worker numbers chart(Healthy host count)
 3. For each worker: details, cpu utilization chart
 4. Display load balanced user-app entry url
+5. Initia.py: initialize the worker pool size to 1 once the manager-app starts, only run once when manager starts
 
 
 Doing now:
-1. Auto-scalling (User-app is ready now, we can test it!)[crontab is supposed to run check_cpu.py every 1min
+1. auto-scaling.py(test it manually, seems good)
 2. Stop the manager(Not tested yet)
 
 To do list:
-1. The http requests received by each worker in 30 mins : cloudwatch custom metrics, publish metrics
-2. Terminate all workers
+1. Terminate all workers
+2. Documents, Results(auto-scaling)
 
 HTTP requests received by each worker:
 1. Having problem in cloudwatch custome metrics.
