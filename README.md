@@ -1,5 +1,5 @@
 # A2
-ece1779 assignment2
+This is the manager web application that can resize the worker pool on demand(according to average CPU utilization), the manager can set the auto scaling policy on their own.
 1. Manually add/delete worker
 2. Worker numbers chart(Healthy host count)
 3. For each worker: details, cpu utilization chart, http requests chart
